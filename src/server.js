@@ -1,9 +1,21 @@
+require('dotenv').config();
 const { createApp } = require('./app');
-const { ENV } = require('./config/env');
+const { connectToDatabase } = require('./config/database');
 
-const app = createApp();
-app.listen(ENV.PORT, () => {
-  console.log(`API démarrée sur le port ${ENV.PORT}`);
-});
+async function start() {
+  try {
+    await connectToDatabase();
+    const app = createApp();
+    const port = process.env.PORT ;
+    app.listen(port, () => {
+      console.log(`API sur http://localhost:${port}`);
+    });
+  } catch (error) {
+    console.error('Erreur au démarrage du serveur:', error);
+    process.exit(1);
+  }
+}
+
+start();
 
 
