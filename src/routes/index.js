@@ -4,6 +4,7 @@ const { signup, login, submitKYC, verifyKYC, getProfile, makeAdmin } = require('
 const { checkToken, checkAdmin, checkKYC } = require('../middleware/auth');
 const profileRoutes = require('./profileRoutes');
 const groupRoutes = require('./groupRoutes');
+const notificationRoutes = require('./notificationRoutes');
 
 const router = Router();
 
@@ -24,5 +25,8 @@ router.use('/profile', profileRoutes);
 
 // Routes de gestion des groupes
 router.use('/groups', groupRoutes);
+
+// Routes de notifications et distribution
+router.use('/notifications', notificationRoutes);
 
 module.exports = { router };
