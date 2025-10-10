@@ -213,6 +213,73 @@ async function getGroupMembers(req, res) {
   }
 }
 
+// Verser une contribution
+async function makeContribution(req, res) {
+  try {
+    const groupId = req.params.id;
+    const userId = req.user.userId;
+    const { amount } = req.body;
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: 'Groupe introuvable' });
+    }
+
+    group.contributions.push({
+      member: userId,
+      amount: amount,
+      status: 'paid'
+    });
+
+    await group.save();
+
+    return res.json({ success: true, message: 'Contribution versée' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur' });
+  }
+}
+
+// Lister les contributions
+async function getContributions(req, res) {
+  try {
+    const groupId = req.params.id;
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: 'Groupe introuvable' });
+    }
+
+    return res.json({ success: true, contributions: group.contributions });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur' });
+  }
+}
+
+// Valider une contribution
+async function validateContribution(req, res) {
+  try {
+    const groupId = req.params.id;
+    const contributionId = req.params.contributionId;
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: 'Groupe introuvable' });
+    }
+
+    const contribution = group.contributions.id(contributionId);
+    if (!contribution) {
+      return res.status(404).json({ message: 'Contribution introuvable' });
+    }
+
+    contribution.status = 'paid';
+    await group.save();
+
+    return res.json({ success: true, message: 'Contribution validée' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur' });
+  }
+}
+
 module.exports = {
   createGroup,
   getUserGroups,
@@ -221,5 +288,8 @@ module.exports = {
   getGroupMessages,
   joinGroup,
   leaveGroup,
-  getGroupMembers
+  getGroupMembers,
+  makeContribution,
+  getContributions,
+  validateContribution
 };

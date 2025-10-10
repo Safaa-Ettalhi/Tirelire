@@ -12,6 +12,12 @@ const GroupSchema = new mongoose.Schema({
   contributionFrequency: { type: String, default: 'monthly' },
   maxMembers: { type: Number, default: 10 },
   status: { type: String, default: 'active' },
+  contributions: [{
+    member: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    amount: { type: Number },
+    status: { type: String, default: 'paid' },
+    date: { type: Date, default: Date.now }
+  }],
   messages: [{
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     content: { type: String },
