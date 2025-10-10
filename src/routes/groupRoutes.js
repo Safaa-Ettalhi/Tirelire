@@ -4,7 +4,10 @@ const {
   getUserGroups,
   getGroupDetails,
   addMessage,
-  getGroupMessages
+  getGroupMessages,
+  joinGroup,
+  leaveGroup,
+  getGroupMembers
 } = require('../controllers/groupController');
 const { checkToken } = require('../middleware/auth');
 
@@ -14,6 +17,9 @@ router.use(checkToken);
 router.post('/', createGroup);
 router.get('/', getUserGroups);
 router.get('/:id', getGroupDetails);
+router.post('/:id/join', joinGroup);
+router.delete('/:id/leave', leaveGroup);
+router.get('/:id/members', getGroupMembers);
 router.post('/:id/messages', addMessage);
 router.get('/:id/messages', getGroupMessages);
 

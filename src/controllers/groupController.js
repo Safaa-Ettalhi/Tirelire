@@ -128,10 +128,98 @@ async function getGroupMessages(req, res) {
   }
 }
 
+// Rejoindre un groupe
+async function joinGroup(req, res) {
+  try {
+    const groupId = req.params.id;
+    const userId = req.user.userId;
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: 'Groupe introuvable' });
+    }
+
+    const isAlreadyMember = group.members.some(member => 
+      member.user.toString() === userId
+    );
+
+    if (isAlreadyMember) {
+      return res.status(400).json({ message: 'Déjà membre' });
+    }
+
+    if (group.members.length >= group.maxMembers) {
+      return res.status(400).json({ message: 'Groupe plein' });
+    }
+
+    group.members.push({ user: userId });
+    await group.save();
+
+    return res.json({ success: true, message: 'Ajouté au groupe' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur' });
+  }
+}
+
+// Quitter un groupe
+async function leaveGroup(req, res) {
+  try {
+    const groupId = req.params.id;
+    const userId = req.user.userId;
+
+    const group = await Group.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: 'Groupe introuvable' });
+    }
+
+    if (group.creator.toString() === userId) {
+      return res.status(400).json({ message: 'Créateur ne peut pas partir' });
+    }
+
+    group.members = group.members.filter(member => 
+      member.user.toString() !== userId
+    );
+    await group.save();
+
+    return res.json({ success: true, message: 'Quitté le groupe' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur' });
+  }
+}
+
+// Lister les membres d'un groupe
+async function getGroupMembers(req, res) {
+  try {
+    const groupId = req.params.id;
+    const userId = req.user.userId;
+
+    const group = await Group.findById(groupId)
+      .populate('members.user', 'name email');
+
+    if (!group) {
+      return res.status(404).json({ message: 'Groupe introuvable' });
+    }
+
+    const isMember = group.members.some(member => 
+      member.user._id.toString() === userId
+    );
+
+    if (!isMember) {
+      return res.status(403).json({ message: 'Pas membre' });
+    }
+
+    return res.json({ success: true, members: group.members });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur' });
+  }
+}
+
 module.exports = {
   createGroup,
   getUserGroups,
   getGroupDetails,
   addMessage,
-  getGroupMessages
+  getGroupMessages,
+  joinGroup,
+  leaveGroup,
+  getGroupMembers
 };
