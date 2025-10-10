@@ -18,6 +18,13 @@ const GroupSchema = new mongoose.Schema({
     status: { type: String, default: 'paid' },
     date: { type: Date, default: Date.now }
   }],
+  distributionRounds: [{
+    roundNumber: { type: Number },
+    beneficiary: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    amount: { type: Number },
+    date: { type: Date },
+    status: { type: String, default: 'completed' }
+  }],
   messages: [{
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     content: { type: String },
