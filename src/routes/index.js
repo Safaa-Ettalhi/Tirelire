@@ -3,6 +3,7 @@ const { ping } = require('../controllers/healthController');
 const { signup, login, submitKYC, verifyKYC, getProfile, makeAdmin } = require('../controllers/authController');
 const { checkToken, checkAdmin, checkKYC } = require('../middleware/auth');
 const profileRoutes = require('./profileRoutes');
+const groupRoutes = require('./groupRoutes');
 
 const router = Router();
 
@@ -15,10 +16,13 @@ router.get('/auth/profile', checkToken, getProfile);
 router.post('/auth/kyc/submit', checkToken, submitKYC);  
 
 // Routes d'administration
-router.post('/admin/verify-kyc', checkToken, checkAdmin, verifyKYC);  // Vérifier KYC
-router.post('/admin/make-admin', checkToken, checkAdmin, makeAdmin);   // Promouvoir en admin
+router.post('/admin/verify-kyc', checkToken, checkAdmin, verifyKYC); 
+router.post('/admin/make-admin', checkToken, checkAdmin, makeAdmin);   
 
 // Routes de gestion du profil utilisateur
 router.use('/profile', profileRoutes);
+
+// Routes de gestion des groupes
+router.use('/groups', groupRoutes);
 
 module.exports = { router };
