@@ -5,7 +5,7 @@ const ticketSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     subject: { type: String, required: true },
     description: { type: String },
-    status: { type: String, enum: ['open', 'closed', 'pending'], default: 'open' },
+    status: { type: String, enum: ['open', 'closed','resolved', 'pending'], default: 'open' },
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     createdAt: { type: Date, default: Date.now },
 });

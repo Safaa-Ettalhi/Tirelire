@@ -24,19 +24,41 @@ exports.payContribution = async (req, res) => {
         const contribution = await Contribution.findById(contributionId).populate('user');
         if (!contribution) return res.status(404).json({ message: 'Contribution introuvable' });
 
+        // Créer le PaymentIntent d'abord
         const paymentIntent = await stripe.paymentIntents.create({
             amount: contribution.amount * 100,
-            currency: 'usd',
+            currency: 'xof', 
             payment_method: paymentMethodId,
-            confirm: true,
+            automatic_payment_methods: {
+                enabled: true,
+                allow_redirects: 'never' // Désactiver les redirections
+            },
+            metadata: {
+                contributionId: contributionId.toString(),
+                userId: req.user._id.toString(),
+                groupId: contribution.group.toString()
+            }
         });
+
+        // Confirmer le PaymentIntent
+        const confirmedPaymentIntent = await stripe.paymentIntents.confirm(paymentIntent.id, {
+            payment_method: paymentMethodId
+        });
+
+        // Vérifier que le paiement a été confirmé avec succès
+        if (confirmedPaymentIntent.status !== 'succeeded') {
+            return res.status(400).json({ 
+                message: 'Le paiement n\'a pas été confirmé',
+                status: confirmedPaymentIntent.status 
+            });
+        }
 
         const payment = await Payment.create({
             user: req.user._id,
             contribution: contributionId,
             amount: contribution.amount,
             status: 'paid',
-            stripePaymentId: paymentIntent.id,
+            stripePaymentId: confirmedPaymentIntent.id,
         });
 
         contribution.paid = true;
@@ -48,7 +70,15 @@ exports.payContribution = async (req, res) => {
         // Vérifier si tous les membres ont payé pour déclencher la distribution
         await checkAndDistributeFunds(contribution.group);
 
-        res.json({ message: 'Paiement effectué', payment });
+        res.json({ 
+            message: 'Paiement effectué avec succès', 
+            payment,
+            contribution: {
+                id: contribution._id,
+                amount: contribution.amount,
+                paid: contribution.paid
+            }
+        });
     } catch (err) {
         res.status(400).json({ message: err.message });
     }
@@ -59,8 +89,6 @@ async function checkAndDistributeFunds(groupId) {
     try {
         const group = await Group.findById(groupId);
         if (!group) return;
-
-        // Vérifier si tous les membres ont payé leurs contributions du tour actuel
         const allContributions = await Contribution.find({ 
             group: groupId,
             dueDate: { $lte: new Date() }
@@ -69,14 +97,12 @@ async function checkAndDistributeFunds(groupId) {
         const totalMembers = group.members.length;
         const paidContributions = allContributions.filter(c => c.paid).length;
 
-        console.log(`📊 Groupe ${group.name}: ${paidContributions}/${totalMembers} contributions payées`);
-
-        // Si tous les membres ont payé, distribuer les fonds
+        console.log(`Groupe ${group.name}: ${paidContributions}/${totalMembers} contributions payées`);
         if (paidContributions === totalMembers) {
             await distributeFundsToBeneficiary(group);
         }
     } catch (error) {
-        console.error('❌ Erreur lors de la vérification des fonds:', error.message);
+        console.error(' Erreur lors de la vérification des fonds:', error.message);
     }
 }
 
@@ -87,16 +113,13 @@ async function distributeFundsToBeneficiary(group) {
         const beneficiary = group.rotationOrder[currentTurn];
         
         if (!beneficiary) {
-            console.log('❌ Aucun bénéficiaire trouvé pour ce tour');
+            console.log('Aucun bénéficiaire trouvé pour ce tour');
             return;
         }
-
-        // Calculer le montant total à distribuer
         const totalAmount = group.amount * group.members.length;
         
-        console.log(`💰 Distribution de ${totalAmount} FCFA au bénéficiaire du tour ${currentTurn + 1}`);
+        console.log(`Distribution de ${totalAmount} FCFA au bénéficiaire du tour ${currentTurn + 1}`);
 
-        // Créer l'enregistrement de distribution
         const distribution = await Distribution.create({
             group: group._id,
             beneficiary: beneficiary,
@@ -104,9 +127,6 @@ async function distributeFundsToBeneficiary(group) {
             turn: currentTurn + 1,
             status: 'processing'
         });
-
-        // Simuler le virement (en production, utiliser Stripe Connect)
-        // Pour l'instant, on simule un virement réussi
         setTimeout(async () => {
             try {
                 // Mettre à jour la distribution
@@ -115,11 +135,10 @@ async function distributeFundsToBeneficiary(group) {
                 distribution.stripeTransferId = `tr_${Date.now()}`;
                 await distribution.save();
 
-                // Passer au tour suivant
                 group.currentTurn = (currentTurn + 1) % group.rotationOrder.length;
                 await group.save();
 
-                console.log(`✅ Distribution terminée ! Tour suivant: ${group.currentTurn + 1}`);
+                console.log(`Distribution terminée ! Tour suivant: ${group.currentTurn + 1}`);
                 
                 // Notifier le bénéficiaire par email
                 try {
@@ -135,12 +154,12 @@ async function distributeFundsToBeneficiary(group) {
                 distribution.status = 'failed';
                 await distribution.save();
             }
-        }, 2000); // Simulation de 2 secondes
+        }, 2000); 
 
-        console.log(`🔄 Distribution en cours pour le tour ${currentTurn + 1}...`);
+        console.log(`Distribution en cours pour le tour ${currentTurn + 1}...`);
 
     } catch (error) {
-        console.error('❌ Erreur lors de la distribution:', error.message);
+        console.error('Erreur lors de la distribution:', error.message);
     }
 }
 

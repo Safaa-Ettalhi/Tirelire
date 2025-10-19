@@ -9,13 +9,9 @@ exports.proposeAgreement = async (req, res) => {
         const group = await Group.findById(groupId);
         
         if (!group) return res.status(404).json({ message: 'Groupe introuvable' });
-        
-        // Vérifier que l'utilisateur est membre du groupe
         if (!group.members.includes(req.user._id)) {
             return res.status(403).json({ message: 'Vous devez être membre du groupe' });
         }
-
-        // Créer l'accord avec expiration dans 7 jours
         const agreement = await GroupAgreement.create({
             group: groupId,
             proposedBy: req.user._id,
@@ -24,8 +20,6 @@ exports.proposeAgreement = async (req, res) => {
             proposedValue,
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 jours
         });
-
-        // L'utilisateur qui propose vote automatiquement "oui"
         agreement.votes.push({
             user: req.user._id,
             approved: true
@@ -49,8 +43,6 @@ exports.voteOnAgreement = async (req, res) => {
         
         const agreement = await GroupAgreement.findById(agreementId).populate('group');
         if (!agreement) return res.status(404).json({ message: 'Accord introuvable' });
-
-        // Vérifier que l'utilisateur est membre du groupe
         if (!agreement.group.members.includes(req.user._id)) {
             return res.status(403).json({ message: 'Vous devez être membre du groupe' });
         }
@@ -61,8 +53,6 @@ exports.voteOnAgreement = async (req, res) => {
             await agreement.save();
             return res.status(400).json({ message: 'Cet accord a expiré' });
         }
-
-        // Vérifier si l'utilisateur a déjà voté
         const existingVote = agreement.votes.find(vote => vote.user.toString() === req.user._id.toString());
         if (existingVote) {
             existingVote.approved = approved;
@@ -75,8 +65,6 @@ exports.voteOnAgreement = async (req, res) => {
         }
 
         await agreement.save();
-
-        // Vérifier si l'accord est approuvé ou rejeté
         await checkAgreementStatus(agreement);
 
         res.json({ message: 'Vote enregistré', agreement });
@@ -84,8 +72,6 @@ exports.voteOnAgreement = async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
-
-// Consulter les accords d'un groupe
 exports.getGroupAgreements = async (req, res) => {
     try {
         const agreements = await GroupAgreement.find({ group: req.params.groupId })
@@ -98,8 +84,6 @@ exports.getGroupAgreements = async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 };
-
-// Fonction pour vérifier le statut d'un accord
 async function checkAgreementStatus(agreement) {
     const group = await Group.findById(agreement.group);
     const totalMembers = group.members.length;
@@ -125,7 +109,7 @@ async function checkAgreementStatus(agreement) {
         agreement.rejectedAt = new Date();
         await agreement.save();
         
-        console.log(`❌ Accord rejeté pour le groupe ${group.name}`);
+        console.log(` Accord rejeté pour le groupe ${group.name}`);
     }
 }
 
@@ -151,7 +135,7 @@ async function applyAgreementChanges(agreement, group) {
     }
     
     await group.save();
-    console.log(`🔄 Changements appliqués au groupe ${group.name}`);
+    console.log(` Changements appliqués au groupe ${group.name}`);
 }
 
 // Fonction utilitaire pour obtenir la valeur actuelle
